@@ -1,1 +1,1 @@
-worker: bin/tndb
+web: bin/tndb
