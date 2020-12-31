@@ -80,5 +80,6 @@ Temporary Items
 .ionide
 
 bin/
+.docker_build/
 # End of https://www.toptal.com/developers/gitignore/api/linux,macos,go,visualstudiocode,heroku
 n
