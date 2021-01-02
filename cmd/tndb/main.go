@@ -3,50 +3,58 @@ package main
 import (
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
-	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/bwmarrin/discordgo"
-	. "github.com/fajarnugroho/twitter-news-discord-bot/bot"
+	. "github.com/fajarnugroho/twitter-news-discord-bot/logger"
+	"github.com/fajarnugroho/twitter-news-discord-bot/watcher"
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
+func init() {
+	if _, err := os.Stat(".env"); !os.IsNotExist(err) {
+		err := godotenv.Load()
+		if err != nil {
+			Log.Fatal("Error loading .env file")
+		}
+	}
+	env := strings.ToLower(os.Getenv("ENV"))
+	if env == "dev" || env == "development" {
+		Log.SetLevel(logrus.DebugLevel)
+	}
+
+}
+
 func main() {
 	token := os.Getenv("DISCORD_BOT_TOKEN")
-	log := logrus.New()
-	log.SetFormatter(&nested.Formatter{
-		HideKeys:      true,
-		NoColors:      true,
-		CallerFirst:   true,
-		ShowFullLevel: true,
-	})
-	log.SetReportCaller(true)
 	// Create a new Discord session using the provided bot token.
 	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
-		log.Fatal("error creating Discord session,", err)
+		Log.Fatal("error creating Discord session,", err)
 		return
 	}
 
-	// Register the messageCreate func as a callback for MessageCreate events.
-	dg.AddHandler(MessageCreate)
-
-	// In this example, we only care about receiving message events.
 	dg.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsGuildMessages)
-
-	// Open a websocket connection to Discord and begin listening.
 	err = dg.Open()
 	if err != nil {
-		log.Fatal("error opening connection,", err)
+		Log.Fatal("error opening connection,", err)
 		return
 	}
+	accounts := strings.Split(os.Getenv("ACCOUNTS"), ",")
+	tna := watcher.Init(dg, accounts)
+	stream, err := tna.SetupStreamer()
+	if err != nil {
+		Log.Fatal("error setup streamer", err)
+	}
+	go tna.Demux.HandleChan(stream.Messages)
 
-	// Wait here until CTRL-C or other term signal is received.
-	log.Info("Bot is now running.  Press CTRL-C to exit.")
+	Log.Info("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	<-sc
 
-	// Cleanly close down the Discord session.
+	stream.Stop()
 	dg.Close()
 }
