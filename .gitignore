@@ -81,5 +81,6 @@ Temporary Items
 
 bin/
 .docker_build/
+.env
 # End of https://www.toptal.com/developers/gitignore/api/linux,macos,go,visualstudiocode,heroku
 n
