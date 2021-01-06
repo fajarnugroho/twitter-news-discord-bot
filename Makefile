@@ -10,7 +10,7 @@ clean:
 	rm -rf $(DOCKER_BUILD)
 
 heroku: $(DOCKER_CMD)
-	heroku container:push web
+	heroku container:push worker
 
 install:
 	go install github.com/fajarnugroho/twitter-news-discord-bot/cmd/tndb
